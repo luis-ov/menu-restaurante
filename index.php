@@ -700,42 +700,66 @@ $resultado = $conexion->query($query);
             let mesa = document.getElementById('clienteMesa').value.trim();
             let metodo = document.getElementById('metodoPago').value;
             let total = calcularTotalSum();
+            let pago = parseFloat(document.getElementById('pagoEfectivo').value) || 0;
 
             if (!nombre || !mesa) {
                 alert('Por favor ingresa tu nombre y número de mesa/ubicación.');
                 return;
             }
 
-            if (metodo === 'Efectivo') {
-                let pago = parseFloat(document.getElementById('pagoEfectivo').value) || 0;
-                if (pago < total) {
-                    alert('El monto ingresado para pago en efectivo es menor al total.');
-                    return;
-                }
+            if (metodo === 'Efectivo' && pago < total) {
+                alert('El monto ingresado para pago en efectivo es menor al total.');
+                return;
             }
 
-            // Construir Ticket de Confirmación
-            let ticketHtml = `
-                <p><strong>Cliente:</strong> ${nombre}</p>
-                <p><strong>Ubicación:</strong> ${mesa}</p>
-                <p><strong>Método de Pago:</strong> ${metodo}</p>
-                <hr style="border-color: rgba(255,255,255,0.1); margin: 8px 0;">
-                <p><strong>Resumen del Pedido:</strong></p>
-                <ul style="padding-left: 18px; margin: 5px 0;">
-            `;
+            let datosPedido = {
+                cliente_nombre: nombre,
+                mesa_entrega: mesa,
+                metodo_pago: metodo,
+                pago_con: pago,
+                total: total,
+                items: carrito
+            };
 
-            carrito.forEach(i => {
-                ticketHtml += `<li>${i.cantidad}x ${i.nombre} - $${(i.precio * i.cantidad).toFixed(2)}</li>`;
+            // Enviar pedido al servidor
+            fetch('guardar_pedido.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datosPedido)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.exito) {
+                    let ticketHtml = `
+                        <p><strong>N° de Orden:</strong> #${data.pedido_id}</p>
+                        <p><strong>Cliente:</strong> ${nombre}</p>
+                        <p><strong>Ubicación:</strong> ${mesa}</p>
+                        <p><strong>Método de Pago:</strong> ${metodo}</p>
+                        <hr style="border-color: rgba(255,255,255,0.1); margin: 8px 0;">
+                        <p><strong>Resumen del Pedido:</strong></p>
+                        <ul style="padding-left: 18px; margin: 5px 0;">
+                    `;
+
+                    carrito.forEach(i => {
+                        ticketHtml += `<li>${i.cantidad}x ${i.nombre} - $${(i.precio * i.cantidad).toFixed(2)}</li>`;
+                    });
+
+                    ticketHtml += `</ul>
+                        <hr style="border-color: rgba(255,255,255,0.1); margin: 8px 0;">
+                        <p style="font-size: 1.1em;"><strong>Total: $${total.toFixed(2)}</strong></p>
+                    `;
+
+                    document.getElementById('checkoutForm').style.display = 'none';
+                    document.getElementById('ticketDetalle').innerHTML = ticketHtml;
+                    document.getElementById('ticketSuccess').style.display = 'block';
+                } else {
+                    alert('Error al guardar el pedido: ' + data.mensaje);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Ocurrió un error al procesar el pedido.');
             });
-
-            ticketHtml += `</ul>
-                <hr style="border-color: rgba(255,255,255,0.1); margin: 8px 0;">
-                <p style="font-size: 1.1em;"><strong>Total: $${total.toFixed(2)}</strong></p>
-            `;
-
-            document.getElementById('checkoutForm').style.display = 'none';
-            document.getElementById('ticketDetalle').innerHTML = ticketHtml;
-            document.getElementById('ticketSuccess').style.display = 'block';
         }
 
         function finalizarTodo() {
