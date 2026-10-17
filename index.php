@@ -361,7 +361,7 @@ $resultado = $conexion->query($query);
         }
         .cart-overlay.show { display: block; }
 
-        /* Modal de Pago / Checkout */
+        /* Modal de Checkout / Formas de Pago */
         .checkout-modal {
             position: fixed;
             top: 50%;
@@ -378,6 +378,8 @@ $resultado = $conexion->query($query);
             opacity: 0;
             transition: all 0.3s ease;
             border: 1px solid rgba(255,255,255,0.1);
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .checkout-modal.active {
@@ -395,9 +397,7 @@ $resultado = $conexion->query($query);
             padding-bottom: 10px;
         }
 
-        .form-group-pay {
-            margin-bottom: 15px;
-        }
+        .form-group-pay { margin-bottom: 15px; }
 
         .form-group-pay label {
             display: block;
@@ -407,7 +407,7 @@ $resultado = $conexion->query($query);
             margin-bottom: 6px;
         }
 
-        .form-group-pay input, .form-group-pay select {
+        .form-group-pay input, .form-group-pay select, .form-group-pay textarea {
             width: 100%;
             padding: 10px 14px;
             background-color: rgba(15, 23, 42, 0.6);
@@ -416,9 +416,25 @@ $resultado = $conexion->query($query);
             color: var(--text-main);
             font-size: 0.95em;
             outline: none;
+            font-family: inherit;
         }
 
-        .form-group-pay input:focus { border-color: var(--accent-color); }
+        .form-group-pay input:focus, .form-group-pay select:focus, .form-group-pay textarea:focus { 
+            border-color: var(--accent-color); 
+        }
+
+        .tiempo-box {
+            background: rgba(217, 119, 6, 0.15);
+            border: 1px solid var(--accent-color);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tiempo-box span { font-size: 1.3em; }
 
         .btn-confirm-pay {
             width: 100%;
@@ -437,7 +453,7 @@ $resultado = $conexion->query($query);
 
         .ticket-box {
             text-align: center;
-            padding: 20px 10px;
+            padding: 10px;
         }
 
         .ticket-icon { font-size: 3em; color: var(--green-price); margin-bottom: 10px; }
@@ -497,7 +513,7 @@ $resultado = $conexion->query($query);
         <?php endif; ?>
     </div>
 
-    <!-- Botón Flotante -->
+    <!-- Botón Flotante del Carrito -->
     <div class="cart-float-btn" onclick="toggleCarrito()">
         🛒 Carrito <span class="cart-count" id="cartCount">0</span>
     </div>
@@ -536,15 +552,39 @@ $resultado = $conexion->query($query);
             </div>
 
             <div class="form-group-pay">
-                <label>Número de Mesa / Entrega:</label>
-                <input type="text" id="clienteMesa" placeholder="Ej. Mesa 4 o Para Llevar" required>
+                <label>Tipo de Servicio:</label>
+                <select id="tipoServicio" onchange="evaluarTipoServicio()">
+                    <option value="Mesa">🍽️ En Restaurante (Auto-pedido)</option>
+                    <option value="Domicilio">🛵 Envío a Domicilio</option>
+                    <option value="Recoger">🛍️ Para Recoger en Sucursal</option>
+                </select>
+            </div>
+
+            <!-- Campo Dinámico según servicio -->
+            <div class="form-group-pay" id="campoMesaGroup">
+                <label>Número de Mesa:</label>
+                <input type="text" id="clienteMesa" placeholder="Ej. Mesa 4">
+            </div>
+
+            <div class="form-group-pay" id="campoDireccionGroup" style="display:none;">
+                <label>Dirección Completa de Entrega:</label>
+                <textarea id="clienteDireccion" rows="2" placeholder="Calle, Número, Colonia, Referencias..."></textarea>
+            </div>
+
+            <!-- Caja de Tiempo Estimado -->
+            <div class="tiempo-box">
+                <span>⏱️</span>
+                <div>
+                    <strong style="font-size:0.9em; display:block;">Tiempo Estimado de Espera:</strong>
+                    <span id="tiempoTexto" style="color:var(--accent-color); font-weight:700; font-size:1em;">15 - 20 minutos</span>
+                </div>
             </div>
 
             <div class="form-group-pay">
                 <label>Forma de Pago:</label>
                 <select id="metodoPago" onchange="evaluarMetodoPago()">
                     <option value="Efectivo">💵 Efectivo</option>
-                    <option value="Tarjeta">💳 Tarjeta / TPV en Mesa</option>
+                    <option value="Tarjeta">💳 Tarjeta / TPV</option>
                     <option value="Transferencia">📱 Transferencia / CoDi / Mercado Pago</option>
                 </select>
             </div>
@@ -556,7 +596,7 @@ $resultado = $conexion->query($query);
             </div>
 
             <div style="background: rgba(15, 23, 42, 0.6); padding: 10px 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="display:flex; justify-size: space-between; font-weight: bold;">
+                <div style="display:flex; justify-content: space-between; font-weight: bold;">
                     <span>Total a Pagar:</span>
                     <span id="checkoutTotalText" style="color: var(--green-price);">$0.00</span>
                 </div>
@@ -568,7 +608,7 @@ $resultado = $conexion->query($query);
         <div id="ticketSuccess" style="display:none;" class="ticket-box">
             <div class="ticket-icon">✔</div>
             <h2 style="color: var(--green-price); margin-bottom: 5px;">¡Pedido Recibido!</h2>
-            <p style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 15px;">Tu orden ha sido enviada a cocina con éxito.</p>
+            <p style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 15px;">Tu orden ha sido enviada con éxito.</p>
             
             <div id="ticketDetalle" style="text-align: left; background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 10px; font-size: 0.88em; margin-bottom: 15px;"></div>
 
@@ -667,7 +707,29 @@ $resultado = $conexion->query($query);
             }
             document.getElementById('cartModal').classList.remove('open');
             document.getElementById('checkoutModal').classList.add('active');
+            evaluarTipoServicio();
             evaluarMetodoPago();
+        }
+
+        function evaluarTipoServicio() {
+            let servicio = document.getElementById('tipoServicio').value;
+            let campoMesa = document.getElementById('campoMesaGroup');
+            let campoDireccion = document.getElementById('campoDireccionGroup');
+            let tiempoTexto = document.getElementById('tiempoTexto');
+
+            if (servicio === 'Mesa') {
+                campoMesa.style.display = 'block';
+                campoDireccion.style.display = 'none';
+                tiempoTexto.innerText = '15 - 20 minutos (Directo a tu mesa)';
+            } else if (servicio === 'Domicilio') {
+                campoMesa.style.display = 'none';
+                campoDireccion.style.display = 'block';
+                tiempoTexto.innerText = '40 - 50 minutos (Incluye repartidor)';
+            } else if (servicio === 'Recoger') {
+                campoMesa.style.display = 'none';
+                campoDireccion.style.display = 'none';
+                tiempoTexto.innerText = '25 - 30 minutos (Listos al llegar)';
+            }
         }
 
         function evaluarMetodoPago() {
@@ -697,14 +759,29 @@ $resultado = $conexion->query($query);
 
         function procesarPedido() {
             let nombre = document.getElementById('clienteNombre').value.trim();
-            let mesa = document.getElementById('clienteMesa').value.trim();
+            let servicio = document.getElementById('tipoServicio').value;
             let metodo = document.getElementById('metodoPago').value;
             let total = calcularTotalSum();
             let pago = parseFloat(document.getElementById('pagoEfectivo').value) || 0;
+            let tiempo = document.getElementById('tiempoTexto').innerText;
+            
+            let ubicacion = '';
 
-            if (!nombre || !mesa) {
-                alert('Por favor ingresa tu nombre y número de mesa/ubicación.');
+            if (!nombre) {
+                alert('Por favor ingresa tu nombre.');
                 return;
+            }
+
+            if (servicio === 'Mesa') {
+                let mesa = document.getElementById('clienteMesa').value.trim();
+                if (!mesa) { alert('Por favor ingresa el número de mesa.'); return; }
+                ubicacion = 'Mesa: ' + mesa;
+            } else if (servicio === 'Domicilio') {
+                let dir = document.getElementById('clienteDireccion').value.trim();
+                if (!dir) { alert('Por favor ingresa tu dirección de entrega.'); return; }
+                ubicacion = 'Domicilio: ' + dir;
+            } else {
+                ubicacion = 'Para Recoger en Sucursal';
             }
 
             if (metodo === 'Efectivo' && pago < total) {
@@ -714,7 +791,7 @@ $resultado = $conexion->query($query);
 
             let datosPedido = {
                 cliente_nombre: nombre,
-                mesa_entrega: mesa,
+                mesa_entrega: ubicacion,
                 metodo_pago: metodo,
                 pago_con: pago,
                 total: total,
@@ -733,8 +810,9 @@ $resultado = $conexion->query($query);
                     let ticketHtml = `
                         <p><strong>N° de Orden:</strong> #${data.pedido_id}</p>
                         <p><strong>Cliente:</strong> ${nombre}</p>
-                        <p><strong>Ubicación:</strong> ${mesa}</p>
+                        <p><strong>Servicio:</strong> ${ubicacion}</p>
                         <p><strong>Método de Pago:</strong> ${metodo}</p>
+                        <p style="color:var(--accent-color); font-weight:bold; margin-top:5px;"><strong>⏱️ Tiempo Estimado:</strong> ${tiempo}</p>
                         <hr style="border-color: rgba(255,255,255,0.1); margin: 8px 0;">
                         <p><strong>Resumen del Pedido:</strong></p>
                         <ul style="padding-left: 18px; margin: 5px 0;">
@@ -770,6 +848,7 @@ $resultado = $conexion->query($query);
             document.getElementById('ticketSuccess').style.display = 'none';
             document.getElementById('clienteNombre').value = '';
             document.getElementById('clienteMesa').value = '';
+            document.getElementById('clienteDireccion').value = '';
             document.getElementById('pagoEfectivo').value = '';
         }
 
