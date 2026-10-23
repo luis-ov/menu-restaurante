@@ -1,0 +1,7 @@
+# Nadie puede ejecutar ni descargar scripts desde esta carpeta
+<FilesMatch "\.(php|php[0-9]|phtml|phar|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>
+
+# No listar el contenido de la carpeta
+Options -Indexes
